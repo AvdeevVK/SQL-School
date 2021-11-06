@@ -1,0 +1,162 @@
+https://github.com/AvdeevVK/SQL-School/commit/6fd0241b5b91c7356bfd7f1eb86134ee80de5f57
+
+show tables;
+
+#
+# TABLE STRUCTURE FOR: communities
+#
+desc friendship;
+
+alter table friendship drop column requested_at;
+
+desc profiles;
+
+# продюсерский номер в гендерном разрезе
+select distinct gender from profiles; 
+
+# Продюсерский номер в гендерном разрезе
+select gender from profiles; 
+
+alter table profiles modify column gender enum ('M','F')
+
+
+-- CRUD : CREATE (INSERT), READ (SELECT), UPDATE, DELETE
+
+# раздачу на 10 пользователей на сайте
+select * from users limit 10;
+
+# фотогалерея на сайте users;
+update users set updated_at = now() where updated_at  < created_at;
+
+# раздачу на 10 пользователей на сайте
+select * from profiles limit 10;
+
+# Ссылаюсь на мой род
+create temporary table genders (name char(1));
+select *from genders;
+insert into genders values ('M'), ('F');
+
+# Апдейт профилей - установить пол
+update profiles set gender = (select name from genders order by rand() limit 1);
+
+
+# Ссылаюсь на новые страны в том, что есть в стране, на мой взгляд, страна
+create temporary table countries (name varchar(50));
+select *from countries;
+insert into countries values 
+('Russia'),
+('China'),
+('the USA');
+
+# Обноновить профили в странах
+update profiles set country = (select name from countries order by rand() limit 1);
+
+
+# фотогалерея в торговых профилях;
+update profiles set updated_at = now() where updated_at  < created_at;
+
+# Добавить 10 сообщений на сайте
+select * from messages limit 10;
+
+select * from users;
+
+select count(*) from users;
+
+# Обновить набор сообщений
+update messages set
+from_user_id = floor(1 + rand() *100),
+to_user_id = floor(1 + rand() *100);
+
+# Канал на 10 страниц на сайте media
+select * from media;
+select count(*) from media;
+
+# Неизвестные и новые на сайте
+# truncate media;
+desc media;
+
+# Обновить набор носителей
+update media set user_id = floor(1 + rand() *100);
+
+# Продюсерский номер в гендерном разрезе
+select user_id from media; 
+
+# Создаем расширешения временных таблиц
+create temporary table extensions (name varchar(10));
+delete from extensions;
+select *from extensions;
+insert into extensions values 
+('jpeg'),
+('avi'),
+('mpeg4'),
+('png');
+
+update media set filename = concat( 
+'http://dropbox.net/vk/',
+filename,
+'.',
+(select name from extensions order by rand() limit 1));
+
+# Новый размер
+update media set size = floor (10000 + rand() * 1000000)
+where size < 10000;
+
+# Новые метаданные
+# owner:
+update media set metadata = concat(
+'{"owner": "',
+(select concat(first_name, ' ',last_name) from users where id = user_id),
+'"}');
+
+
+select * from media_types;
+
+# Удалить
+delete from media_types;
+desc media_types;
+select name from media_types;
+select count(*) from media_types; 
+
+# Автостоянка в media_types
+insert into media_types (name) values
+('image'),
+('gif'),
+('audio');
+
+# Обрезать
+truncate media_types;
+
+# Обновить media_type_id
+update media set media_type_id = floor (1+ rand() * 4); 
+
+show tables;
+desc friendship;
+select * from friendship;
+
+# Обновить набор носителей
+update friendship set updated_at = now() where updated_at  < created_at;
+
+# Обновить набор дружбы
+update friendship set
+friend_id = floor(1 + rand() *100),
+user_id = floor(1 + rand() *100);
+
+select * from friendship_statuses;
+
+truncate friendship_statuses;
+
+insert into friendship_statuses (name) values
+('Requested'), ('Confirmed');
+
+update friendship set friendship_status_id = floor(1+ rand() *2);
+select * from friendship;
+
+select * from communities;
+
+delete from communities where id > 20;
+
+select * from communities_users;
+
+update communities_users set 
+community_id = floor(1+ rand() * 10);
+#user_id = floor(1+ rand() * 100);
