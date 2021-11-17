@@ -1,0 +1,68 @@
+Получите идентификатор и название последнего созданного сообщества.
+SELECT 
+  id, number, MAX(started_at) 
+  FROM 
+  friendship ;
+или ---//---
+SELECT 
+  id, number, started_at 
+FROM 
+  friendship 
+  ORDER BY  
+  started_at DESC LIMIT 1;
+
+Покажите уникальные значения года по датам дней рождений пользователей, отсортированные в порядке увеличения.
+
+SELECT DISTINCT (SUBSTR 
+(started_at, 1, 4)) AS birthday_at 
+FROM 
+  users 
+  GROUP BY date ;
+
+
+Найдите количество пользователей в базе данных. Выведите искомое значение в столбец с именем total_teachers.
+
+SELECT 
+  COUNT(*) AS 'total_teachers' 
+FROM 
+  users;
+
+Покажите даты создания двух последних по времени сообщений.
+
+SELECT 
+  number, started_at 
+FROM 
+  messages 
+ORDER BY ID DESC LIMIT 2;
+
+
+Найдите количество сообщений пользователя с идентификатором равным 1.
+
+SELECT 
+  user_id, 
+  COUNT(*) 
+
+FROM 
+  messages 
+
+WHERE 
+  user_id = 1
+
+GROUP BY
+  user_id;
+  
+(дополнительное задание) Найти идентификатор пользователя, который поставил больше всего лайков за сообщения и посты.
+
+SELECT 
+  user_id 
+
+FROM 
+  post, target_type  
+
+GROUP BY 
+  user_id
+
+ORDER BY COUNT(*) DESC 
+
+LIMIT 1;
+
