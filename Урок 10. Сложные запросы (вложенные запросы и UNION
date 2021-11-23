@@ -1,0 +1,255 @@
+Урок 10. Сложные запросы (вложенные запросы и UNION
+Работаем с БД vk и тестовыми данными, которые вы сгенерировали ранее:
+1. Создать все необходимые внешние ключи и диаграмму отношений.
+2. Определить кто больше поставил лайков (всего) - мужчины или женщины?
+3. Вывести для каждого пользователя количество созданных сообщений, постов, загруженных медиафайлов и поставленных лайков.
+4. (по желанию) Подсчитать количество лайков которые получили 10 самых молодых пользователей.
+
+--1. Создать все необходимые внешние ключи и диаграмму отношений.
+
+USE example;
+
+-- Проверка уже существующих внешних ключей
+select 
+  TABLE_NAME,COLUMN_NAME,CONSTRAINT_NAME,REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME 
+from 
+  INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+where 
+  TABLE_SCHEMA = "example" 
+and 
+  REFERENCED_COLUMN_NAME is not NULL;
+
++--------------------+---------------+------------------------------+-----------------------+------------------------+
+| TABLE_NAME         | COLUMN_NAME   | CONSTRAINT_NAME              | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME |
++--------------------+---------------+------------------------------+-----------------------+------------------------+
+| communities_users  | user_id       | communities_users_user_fk    | users                 | id                     |
+| communities_users  | community_id  | community_fk                 | communities           | id                     |
+| friendship         | friend_id     | friendship_friend_fk         | users                 | id                     |
+| friendship         | user_id       | friendship_user_fk           | users                 | id                     |
+| friendship         | status_id     | status_fk                    | friendship_statuses   | id                     |
+| friendship_history | friendship_id | friendship_fk                | friendship            | id                     |
+| friendship_history | status_id     | friendship_history_status_fk | friendship_statuses   | id                     |
+| media              | media_type_id | media_type_fk                | media_types           | id                     |
+| media              | user_id       | media_user_fk                | users                 | id                     |
+| messages           | from_user_id  | from_user_fk                 | users                 | id                     |
+| messages           | to_user_id    | to_user_fk                   | users                 | id                     |
++--------------------+---------------+------------------------------+-----------------------+------------------------+
+11 rows in set (0.00 sec)
+
+-- Не хватает нескольких внешних ключей нужно их добавить:
+-- 1) Для таблицы profiles
+-- 2) Для таблицы posts
+-- 3) Для таблицы likes
+
+ALTER TABLE profiles
+ADD CONSTRAINT profiles_user_id_fk 
+ FOREIGN KEY (user_id) REFERENCES users(id)
+   ON DELETE CASCADE,
+ADD CONSTRAINT profiles_photo_id_fk
+ FOREIGN KEY (photo_id) REFERENCES media(id)
+   ON DELETE SET NULL;
+
+ALTER TABLE posts
+ADD CONSTRAINT posts_user_id_fk 
+ FOREIGN KEY (user_id) REFERENCES users(id)
+   ON DELETE  CASCADE,
+ADD CONSTRAINT posts_community_id_fk
+ FOREIGN KEY (community_id) REFERENCES communities(id)
+   ON DELETE CASCADE;
+
+ALTER TABLE likes
+ADD CONSTRAINT likes_target_type_id_fk 
+ FOREIGN KEY (target_type_id) REFERENCES target_types(id)
+   ON DELETE  CASCADE,
+ADD CONSTRAINT likes_user_id_fk_fk
+ FOREIGN KEY (user_id) REFERENCES users(id)
+   ON DELETE CASCADE;  
+
+ -- проверка
+ select 
+  TABLE_NAME,COLUMN_NAME,CONSTRAINT_NAME,REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME 
+from 
+  INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+where 
+  TABLE_SCHEMA = "example" 
+and 
+  REFERENCED_COLUMN_NAME is not NULL;
+
++--------------------+----------------+------------------------------+-----------------------+------------------------+
+| TABLE_NAME         | COLUMN_NAME    | CONSTRAINT_NAME              | REFERENCED_TABLE_NAME | REFERENCED_COLUMN_NAME |
++--------------------+----------------+------------------------------+-----------------------+------------------------+
+| communities_users  | user_id        | communities_users_user_fk    | users                 | id                     |
+| communities_users  | community_id   | community_fk                 | communities           | id                     |
+| friendship         | friend_id      | friendship_friend_fk         | users                 | id                     |
+| friendship         | user_id        | friendship_user_fk           | users                 | id                     |
+| friendship         | status_id      | status_fk                    | friendship_statuses   | id                     |
+| friendship_history | friendship_id  | friendship_fk                | friendship            | id                     |
+| friendship_history | status_id      | friendship_history_status_fk | friendship_statuses   | id                     |
+| likes              | target_type_id | likes_target_type_id_fk      | target_types          | id                     |
+| likes              | user_id        | likes_user_id_fk_fk          | users                 | id                     |
+| media              | media_type_id  | media_type_fk                | media_types           | id                     |
+| media              | user_id        | media_user_fk                | users                 | id                     |
+| messages           | from_user_id   | from_user_fk                 | users                 | id                     |
+| messages           | to_user_id     | to_user_fk                   | users                 | id                     |
+| posts              | community_id   | posts_community_id_fk        | communities           | id                     |
+| posts              | user_id        | posts_user_id_fk             | users                 | id                     |
+| profiles           | photo_id       | profiles_photo_id_fk         | media                 | id                     |
+| profiles           | user_id        | profiles_user_id_fk          | users                 | id                     |
++--------------------+----------------+------------------------------+-----------------------+------------------------+
+17 rows in set (0.00 sec)
+
+
+-- Определить кто больше поставил лайков (всего) - мужчины или женщины?
+
+USE example;
+
+
+-- 3. Определить кто больше поставил лайков (всего) - мужчины или женщины?
+
+SELECT 
+	COUNT(l.user_id),
+    (SELECT gender FROM profiles AS p WHERE l.user_id = p.user_id) as gender
+FROM likes AS l
+GROUP BY gender;
+
++------------------+--------+
+| COUNT(l.user_id) | gender |
++------------------+--------+
+|              528 | m      |
+|              472 | f      |
++------------------+--------+
+2 rows in set (0.01 sec)
+
+-- Судя по статистике, мужчины более активны.
+Как и в жизни))
+
+-- Вывести для каждого пользователя количество созданных сообщений, постов, загруженных медиафайлов и поставленных лайков.
+
+SELECT
+	(SELECT CONCAT(first_name, ' ', last_name) 
+  FROM profiles 
+  WHERE user_id = users.id) AS user,
+	(SELECT COUNT(*) 
+  FROM messages 
+  WHERE from_user_id = users.id) AS messages,
+	(SELECT COUNT(*) 
+  FROM posts 
+  WHERE user_id = users.id) AS posts,
+	(SELECT COUNT(*) 
+  FROM media 
+  WHERE user_id = users.id) AS mediafiles,
+	(SELECT COUNT(*) 
+  FROM likes 
+  WHERE user_id = users.id) AS likes
+FROM
+	users
+ORDER BY
+	messages DESC,
+	posts DESC,
+	mediafiles DESC,
+	likes DESC;
+
+--(по желанию) Подсчитать количество лайков которые получили 10 самых молодых пользователей.
+SELECT * FROM target_types;
++----+----------+---------------------+
+| id | name     | created_at          |
++----+----------+---------------------+
+|  1 | messages | 2020-08-02 19:42:22 |
+|  2 | users    | 2020-08-02 19:42:22 |
+|  3 | media    | 2020-08-02 19:42:22 |
+|  4 | posts    | 2020-08-02 19:42:22 |
++----+----------+---------------------+
+4 rows in set (0.00 sec)
+
+-- будем искать лайки только самих пользователей. Самых молодых.
+
+SELECT
+	COUNT(l.target_id)
+    ,(SELECT u.first_name FROM users AS u WHERE l.target_id = u.id AND l.target_type_id = 2) as first_name
+	,(SELECT u.last_name FROM users AS u WHERE l.target_id = u.id AND l.target_type_id = 2) as last_name
+    ,(SELECT p.birthday FROM profiles AS p WHERE l.target_id = p.user_id AND l.target_type_id = 2) as birthday
+    ,(SELECT u.id FROM users AS u WHERE l.target_id = u.id AND l.target_type_id = 2) as u_id
+FROM likes AS l
+WHERE l.target_type_id = 2
+GROUP BY u_id, birthday, first_name, last_name
+ORDER BY birthday DESC
+LIMIT 10;
+
++--------------------+------------+------------+------------+------+
+| COUNT(l.target_id) | first_name | last_name  | birthday   | u_id |
++--------------------+------------+------------+------------+------+
+|                  1 | Kirsten    | Quigley    | 2019-11-18 |   68 |
+|                  4 | Trent      | Dibbert    | 2019-07-03 |   25 |
+|                  5 | Emily      | Stracke    | 2019-01-14 |   65 |
+|                  4 | Conner     | Daniel     | 2018-05-09 |    2 |
+|                  2 | Julianne   | Ward       | 2018-02-27 |   38 |
+|                  2 | Cicero     | McLaughlin | 2017-03-26 |    7 |
+|                  2 | Camille    | Zemlak     | 2015-08-04 |   79 |
+|                  3 | Josianne   | Veum       | 2015-05-26 |   99 |
+|                  6 | Felicia    | Kris       | 2013-07-22 |   33 |
+|                  3 | Shania     | Rutherford | 2013-02-06 |   77 |
++--------------------+------------+------------+------------+------+
+10 rows in set (0.01 sec)
+
+Сколько лайков получили пользователи и все их труды (сообщения, посты, медиа). Это же тоже косвенные лайки пользователям.
+SELECT 
+	SUM(l.likes) AS quantity
+	,(SELECT u.first_name FROM users AS u WHERE l.u_id = u.id) as first_name
+ 	,(SELECT u.last_name FROM users AS u WHERE l.u_id = u.id) as last_name
+    ,(SELECT p.birthday FROM profiles AS p WHERE l.u_id = p.user_id) as birthday
+    ,l.u_id 
+   FROM
+		(SELECT
+			COUNT(l.target_id) AS likes
+			,(SELECT m.from_user_id FROM messages AS m WHERE l.target_id = m.id AND l.target_type_id = 1) as u_id
+		FROM likes AS l
+		WHERE l.target_type_id = 1
+		GROUP BY u_id 
+
+		UNION ALL
+
+		SELECT
+			COUNT(l.target_id)
+			,(SELECT u.id FROM users AS u WHERE l.target_id = u.id AND l.target_type_id = 2) as u_id
+		FROM likes AS l
+		WHERE l.target_type_id = 2
+		GROUP BY u_id
+
+		UNION ALL
+
+		SELECT
+			COUNT(l.target_id)
+			,(SELECT m.user_id FROM media AS m WHERE l.target_id = m.id AND l.target_type_id = 3) as u_id
+		FROM likes AS l
+		WHERE l.target_type_id = 3
+		GROUP BY u_id
+
+		UNION ALL
+
+		SELECT
+			COUNT(l.target_id)
+			,(SELECT p.user_id FROM posts AS p WHERE l.target_id = p.id AND l.target_type_id = 4) as u_id
+		FROM likes AS l
+		WHERE l.target_type_id = 4
+		GROUP BY u_id) AS l
+ GROUP BY l.u_id, first_name, last_name, birthday
+ ORDER BY birthday DESC
+ LIMIT 10;
+
++----------+------------+------------+------------+------+
+| quantity | first_name | last_name  | birthday   | u_id |
++----------+------------+------------+------------+------+
+|       10 | Kirsten    | Quigley    | 2019-11-18 |   68 |
+|        8 | Trent      | Dibbert    | 2019-07-03 |   25 |
+|        9 | Emily      | Stracke    | 2019-01-14 |   65 |
+|       11 | Conner     | Daniel     | 2018-05-09 |    2 |
+|        7 | Julianne   | Ward       | 2018-02-27 |   38 |
+|        7 | Cicero     | McLaughlin | 2017-03-26 |    7 |
+|        7 | Junior     | Walker     | 2017-02-05 |   63 |
+|        6 | Camille    | Zemlak     | 2015-08-04 |   79 |
+|        7 | Josianne   | Veum       | 2015-05-26 |   99 |
+|        9 | Felicia    | Kris       | 2013-07-22 |   33 |
++----------+------------+------------+------------+------+
+10 rows in set (0.03 sec)
+Появился еще один "молодой пользователь"
+
