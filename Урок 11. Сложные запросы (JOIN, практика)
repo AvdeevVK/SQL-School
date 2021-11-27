@@ -1,0 +1,109 @@
+1. Определить кто больше поставил лайков (всего) - мужчины или женщины?
+
+SELECT 
+	COUNT(l.user_id),
+    (SELECT gender FROM profiles AS p WHERE l.user_id = p.user_id) as gender
+FROM likes AS l
+GROUP BY gender;
+
++------------------+--------+
+| COUNT(l.user_id) | gender |
++------------------+--------+
+|              528 | m      |
+|              472 | f      |
++------------------+--------+
+2 rows in set (0.01 sec)
+
+Из таблицы users нам понадобится признак по полу gender;
+Из таблицы likes по полю user_id будем связывать с таблицей users;
+Так как таблица likes состоит из записей о лайках и каждая строка это отссылка к юзеру, который поставил лайк,
+поэтому таблицу likes берем полностью(LEFT JOIN) и выбираем совпадения из таблицы users; 
+
+WITH winner AS(
+SELECT
+	u.gender,
+	count(1) AS counter
+FROM 
+	likes l
+LEFT JOIN users u ON
+	(
+	l.user_id = u.id 
+)
+WHERE
+	u.gender = 'M'
+UNION
+SELECT
+	u.gender,
+	count(1) AS counter
+FROM 
+	likes l
+LEFT JOIN users u ON
+	(
+	l.user_id = u.id 
+)
+WHERE
+	u.gender = 'F')
+SELECT
+	w.gender,
+	w.counter
+FROM
+	winner w
+INNER JOIN users u2 ON
+	(
+w.gender = u2.gender 
+)
+GROUP BY w.gender
+LIMIT 1;
+
+
+-- Вывести для каждого пользователя количество созданных сообщений, постов, загруженных медиафайлов и поставленных лайков.
+
+SELECT  users.id, concat(users.first_name, ' ' ,users.last_name) AS name , 
+count(DISTINCT(messages.id)) AS messages_total,
+count(DISTINCT(posts.id)) AS posts_total, 
+count(DISTINCT(media.id)) AS media_total, 
+count(DISTINCT(likes.id)) AS likes_total 
+  FROM users
+    LEFT JOIN messages 
+      ON users.id = messages.from_user_id 
+    LEFT JOIN posts 
+      ON users.id = posts.user_id 
+    LEFT JOIN media 
+      ON users.id = media.user_id 
+    LEFT JOIN likes 
+      ON users.id = likes.user_id   
+   GROUP BY name
+   ORDER BY users.id ;
+   
+   -- проверка 
+SELECT id,
+  first_name, 
+  last_name, 
+  (SELECT count(id) FROM messages WHERE from_user_id = users.id) AS messages, 
+  (SELECT count(id) FROM posts WHERE user_id = users.id) AS posts, 
+  (SELECT count(id) FROM media WHERE user_id = users.id) AS media, 
+  (SELECT count(id) FROM likes WHERE user_id = users.id) AS likes
+  FROM users;
+  
+  -- 3.(по желанию) Подсчитать количество лайков которые получили 10 самых последних сообщений. 
+  
+SELECT 
+COUNT(*) AS total 
+FROM likes
+JOIN 
+(SELECT id FROM messages ORDER BY created_at DESC LIMIT 10) AS ms
+ON likes.target_type = 'messages' AND ms.id = likes.target_id;
+
+-- проверка
+SELECT sum(likes_calc)
+FROM 
+(
+SELECT (
+ SELECT count(*)
+   FROM likes 
+     WHERE target_type = 'messages'
+      AND target_id = messages.id) AS likes_calc
+ FROM messages
+  ORDER BY created_at
+   DESC LIMIT 10 
+) AS likes_sum; 
