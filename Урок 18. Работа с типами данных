@@ -1,0 +1,100 @@
+Урок 18. Работа с типами данных
+1.	Создать базу данных vk и выдать пользователю gb_user все права на базу данных vk.
+
+C:\Users\ASRock>psql -d vk -U gb_user
+psql (12.9)
+ПРЕДУПРЕЖДЕНИЕ: Кодовая страница консоли (866) отличается от основной
+                страницы Windows (1251).
+                8-битовые (русские) символы могут отображаться некорректно.
+                Подробнее об этом смотрите документацию psql, раздел
+                "Notes for Windows users".
+Введите "help", чтобы получить справку.
+
+Устанавливаю кодировку
+postgres=# psql \! chcp 1251
+Текущая кодовая страница: 1251
+
+2.	Под пользователем gb_user выполнить загрузку данных из дампа, приложенного к материалам текщуего урока.
+
+ALTER TABLE Запрос завершён успешно, время выполнения: 565 msec.
+
+3.	Создать в таблице фотографий столбец metadata типа JSON и следующими ключами - id, url, size и заполнить его значениями соответствующих строк. 
+В отчёт приложить команды ALTER TABLE и UPDATE.
+
+vk=> ALTER TABLE photo ADD COLUMN members INT[];
+ALTER TABLE
+vk=> \d photo
+vk=> alter table photo add column metadata json;
+ALTER TABLE
+vk=> update photo set metadata = json_build_object(
+ 'id', id,
+'url', url,
+'size', size
+);
+UPDATE 100
+
+4.	В таблице сообществ создать столбец members типа массив. Для сообщества с id = 3 поместить в ячейку members идентификаторы всех пользователей, 
+являющихся членами данной группы. В отчёт приложить выполняемые команды.
+
+vk=> SELECT members FROM communities WHERE id = 3;
+vk=> UPDATE communities SET id = 3 WHERE id = 110; 
+vk=> UPDATE communities_users 
+SET community_id = 3 WHERE community_id IN (5, 68, 74);
+UPDATE 1
+UPDATE 5
+
+Второй вариант развития сценарий:
+
+vk=> ALTER TABLE communities ADD COLUMN members INT [];
+vk=> UPDATE communities
+SET members = 
+(SELECT array_agg (user_id) FROM communities_user
+WHERE communities_id = 3)
+WHERE id = 3;
+
+
+vk=> ALTER TABLE communities ADD COLUMN members INT [];
+vk=> UPDATE communities
+SET members = 
+(SELECT array_agg (user_id) FROM communities_user
+WHERE communities_id = communities.id)
+WHERE id = 3;
+
+5.	Создать пользовательский составной тип данных contacts c полями phone и email. 
+
+vk=> CREATE TYPE contacts AS (phone VARCHAR(15), email VARCHAR(120));
+CREATE TYPE
+
+В таблице пользователей добавить столбец user_contacts типа contacts. 
+vk=> ALTER TABLE users ADD column user_contacts contacts_type;
+
+В таблице пользователей добавить столбец user_contacts типа contacts. 
+
+vk=> ALTER TABLE users ADD column user_contacts contacts;
+vk=> UPDATE users SET user_contacts = (users.phone, users.email);
+vk=> UPDATE users SET user_email = ‘test@somemail.ru' WHERE id = 21;
+
+Второй вариант развития сценарий:
+vk=> CREATE TYPE contacts_type AS (phone INTEGER, email INTEGER);
+CREATE TYPE
+В таблице пользователей добавить столбец user_contacts типа contacts.
+vk=> ALTER TABLE users ADD column user_contacts contacts_type;
+
+Находим нашего пользователя:
+vk=> SELECT email from public.users where id = 21;
+              email
+---------------------------------
+ pede.blandit.congue@outlook.net
+(1 строка)
+
+Меняем:
+vk=> UPDATE public.users SET email = 'test@somemail.ru' where id = 21;
+UPDATE 1
+
+Проверяем:
+vk=> SELECT email from public.users where id = 21;
+       email
+-------------------
+ test@somemail.ru
+(1 строка)
+
